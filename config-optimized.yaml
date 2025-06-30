@@ -1,0 +1,409 @@
+app:
+  name: "X Spam Detector - Optimized"
+  version: "2.0.0"
+  environment: "production"
+  data_dir: "./data"
+  temp_dir: "./temp"
+
+# Enhanced Detection Configuration with Optimizations
+detection:
+  # LSH Parameters - optimized for performance and accuracy
+  minhash_threshold: 0.7
+  simhash_threshold: 3
+  minhash_bands: 16
+  minhash_hashes: 128
+  simhash_tables: 4
+  
+  # Clustering Parameters
+  min_cluster_size: 3
+  max_cluster_age_hours: 24
+  
+  # Detection Thresholds
+  spam_score_threshold: 0.6
+  bot_score_threshold: 0.5
+  coordination_threshold: 5
+  
+  # Performance Settings
+  batch_size: 1000
+  enable_hybrid_mode: true
+  
+  # New: Hybrid LSH Configuration
+  hybrid_strategy: "adaptive_weighting"  # weighted_average, max_score, adaptive_weighting, consensus_voting
+  lsh_weights:
+    minhash_weight: 0.6
+    simhash_weight: 0.4
+    text_length_factor: 0.1
+    content_type_factor: 0.1
+
+# New: Performance Optimization Settings
+performance:
+  # Caching Configuration
+  cache:
+    enabled: true
+    lru_capacity: 10000
+    ttl_minutes: 30
+    signature_cache_size: 5000
+    similarity_cache_size: 10000
+    bucket_cache_size: 2500
+  
+  # Worker Pool Configuration
+  worker_pool:
+    enabled: true
+    workers: 0  # 0 = auto-detect CPU count
+    queue_size: 50000
+    worker_timeout_seconds: 30
+    batch_processor:
+      batch_size: 500
+      max_batches: 100
+  
+  # Memory Management
+  memory:
+    max_heap_size_mb: 2048
+    gc_target_percentage: 70
+    enable_memory_ballast: true
+
+# New: Temporal Analysis Configuration
+temporal_analysis:
+  enabled: true
+  window_size_hours: 24
+  min_events: 5
+  burst_threshold: 3.0
+  periodic_threshold: 0.7
+  
+  # Pattern Detection
+  patterns:
+    burst_detection: true
+    periodic_detection: true
+    coordinated_detection: true
+    flash_mob_detection: true
+  
+  # Analysis Parameters
+  baseline_samples: 1000
+  confidence_level: 0.95
+  max_pattern_age_days: 7
+
+# New: Plugin System Configuration
+plugins:
+  enabled: true
+  plugin_dir: "./plugins"
+  max_plugins: 10
+  default_timeout_seconds: 30
+  auto_load: true
+  
+  # Plugin-specific settings
+  settings:
+    ml_detector:
+      model_path: "./models/xgboost_spam.model"
+      threshold: 0.7
+    network_analyzer:
+      max_graph_size: 10000
+      centrality_threshold: 0.8
+
+# New: Monitoring and Metrics Configuration
+monitoring:
+  enabled: true
+  collect_interval_seconds: 30
+  retention_hours: 168  # 7 days
+  
+  # Metrics Export
+  prometheus:
+    enabled: true
+    endpoint: "/metrics"
+    port: 9090
+  
+  # System Metrics
+  system_metrics:
+    enabled: true
+    cpu_monitoring: true
+    memory_monitoring: true
+    goroutine_monitoring: true
+    gc_monitoring: true
+  
+  # Application Metrics
+  app_metrics:
+    enabled: true
+    processing_rate: true
+    cache_hit_rate: true
+    detection_latency: true
+    queue_depth: true
+
+# New: Alerting System Configuration
+alerts:
+  enabled: true
+  
+  # Default Alert Rules
+  rules:
+    high_spam_volume:
+      name: "High Spam Volume Detected"
+      condition:
+        type: "metric_threshold"
+        metric: "spam_detection_rate"
+        operator: "greater_than"
+        threshold: 100.0
+        duration_minutes: 5
+      severity: "warning"
+      channels: ["slack", "email"]
+      throttle:
+        enabled: true
+        duration_minutes: 15
+        max_alerts: 3
+        per_timeframe_minutes: 60
+    
+    coordinated_attack:
+      name: "Coordinated Spam Attack"
+      condition:
+        type: "spam_cluster_detected"
+        metric: "confidence"
+        operator: "greater_than"
+        threshold: 0.9
+      severity: "critical"
+      channels: ["slack", "pagerduty"]
+      escalation:
+        enabled: true
+        levels:
+          - level: 1
+            after_minutes: 5
+            channels: ["slack"]
+            severity: "error"
+          - level: 2
+            after_minutes: 15
+            channels: ["pagerduty"]
+            severity: "critical"
+    
+    system_health:
+      name: "System Health Check"
+      condition:
+        type: "system_health"
+        metric: "memory_usage_percent"
+        operator: "greater_than"
+        threshold: 90.0
+      severity: "warning"
+      channels: ["slack"]
+  
+  # Alert Channels
+  channels:
+    slack:
+      type: "slack"
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      username: "SpamDetector"
+      channel: "#security-alerts"
+    
+    email:
+      type: "email"
+      smtp_host: "${SMTP_HOST}"
+      smtp_port: 587
+      username: "${SMTP_USERNAME}"
+      password: "${SMTP_PASSWORD}"
+      from: "spam-detector@company.com"
+      to: ["security-team@company.com"]
+    
+    pagerduty:
+      type: "pagerduty"
+      integration_key: "${PAGERDUTY_INTEGRATION_KEY}"
+
+# New: Reputation System Configuration
+reputation:
+  enabled: true
+  
+  # Scoring Parameters
+  initial_score: 0.5
+  min_score: 0.0
+  max_score: 1.0
+  confidence_threshold: 0.6
+  
+  # Decay Settings
+  decay_rate: 0.1
+  decay_interval_hours: 24
+  max_event_age_days: 30
+  
+  # History Settings
+  max_history_size: 100
+  
+  # Update Settings
+  batch_size: 100
+  update_interval_hours: 1
+  
+  # Thresholds
+  spam_threshold: 0.3
+  trusted_threshold: 0.7
+  
+  # Persistence
+  persistence:
+    enabled: true
+    backend: "file"  # file, redis, postgres
+    file_path: "./data/reputation.json"
+
+# New: Privacy and Anonymization Configuration
+privacy:
+  anonymization:
+    enabled: true
+    default_method: "pseudonymize"
+    salt_rotation_hours: 24
+    
+    # K-anonymity Settings
+    k_value: 5
+    l_diversity: 2
+    
+    # Differential Privacy Settings
+    epsilon: 1.0
+    delta: 0.00001
+    
+    # Data Retention
+    retention_period_days: 30
+    
+    # Field-specific Configuration
+    fields:
+      tweet_id:
+        method: "pseudonymize"
+        preserve_pattern: true
+        enabled: true
+      author_id:
+        method: "pseudonymize"
+        preserve_pattern: true
+        enabled: true
+      text_content:
+        method: "generalize"
+        preserve_pattern: true
+        enabled: true
+      timestamp:
+        method: "generalize"
+        enabled: true
+    
+    # Audit Configuration
+    audit:
+      enabled: true
+      log_file: "./logs/anonymization.log"
+
+# Enhanced GUI Configuration
+gui:
+  window_width: 1400
+  window_height: 900
+  theme: "auto"
+  refresh_interval: 5
+  max_display_items: 1000
+  
+  # New: Advanced UI Features
+  features:
+    real_time_charts: true
+    export_functionality: true
+    advanced_filters: true
+    cluster_visualization: true
+    temporal_analysis_view: true
+    reputation_dashboard: true
+
+# Enhanced Logging Configuration
+logging:
+  level: "info"
+  output: "both"
+  filename: "spam-detector.log"
+  max_size: 10
+  max_backups: 5
+  max_age: 30
+  
+  # New: Structured Logging
+  format: "json"
+  include_caller: true
+  include_timestamp: true
+  
+  # Component-specific Logging
+  components:
+    lsh: "debug"
+    cache: "info"
+    worker_pool: "info"
+    temporal: "info"
+    alerts: "info"
+    reputation: "info"
+    privacy: "info"
+
+# New: Health Check Configuration
+health:
+  enabled: true
+  endpoint: "/health"
+  port: 8081
+  timeout_seconds: 5
+  
+  checks:
+    database_connectivity: true
+    cache_connectivity: true
+    worker_pool_status: true
+    memory_usage: true
+    disk_space: true
+
+# New: Security Configuration
+security:
+  # Rate Limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst_size: 20
+  
+  # API Security
+  api:
+    enable_cors: true
+    allowed_origins: ["http://localhost:3000"]
+    enable_auth: false  # Set to true for production
+    jwt_secret: "${JWT_SECRET}"
+  
+  # Data Protection
+  data_protection:
+    encrypt_at_rest: false
+    encrypt_in_transit: true
+    key_rotation_days: 90
+
+# New: Export and Integration Configuration
+export:
+  enabled: true
+  
+  # Supported Formats
+  formats:
+    json: true
+    csv: true
+    stix: true  # STIX/TAXII for threat intelligence
+    
+  # Integration Settings
+  integrations:
+    siem:
+      enabled: false
+      endpoint: "${SIEM_ENDPOINT}"
+      api_key: "${SIEM_API_KEY}"
+    
+    threat_intel:
+      enabled: false
+      feeds: ["alienvault", "malwaredomainlist"]
+      update_interval_hours: 6
+
+# Advanced Configuration for Production
+production:
+  # Database Configuration (if needed)
+  database:
+    enabled: false
+    type: "postgres"
+    host: "${DB_HOST}"
+    port: 5432
+    name: "${DB_NAME}"
+    username: "${DB_USERNAME}"
+    password: "${DB_PASSWORD}"
+    ssl_mode: "require"
+    max_connections: 100
+    
+  # Redis Configuration (for caching and sessions)
+  redis:
+    enabled: false
+    host: "${REDIS_HOST}"
+    port: 6379
+    password: "${REDIS_PASSWORD}"
+    db: 0
+    max_retries: 3
+    
+  # Load Balancing and Scaling
+  scaling:
+    enable_clustering: false
+    node_id: "${NODE_ID}"
+    cluster_nodes: []
+    
+  # Backup Configuration
+  backup:
+    enabled: false
+    interval_hours: 24
+    retention_days: 30
+    storage_path: "./backups"

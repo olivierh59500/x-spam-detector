@@ -1,0 +1,210 @@
+# X Spam Detector - Autonomous Configuration
+app:
+  name: "X Spam Detector"
+  version: "1.0.0"
+  environment: "production"
+  data_dir: "./data"
+  temp_dir: "./temp"
+
+# Autonomous crawler configuration
+crawler:
+  # Twitter API configuration
+  api:
+    bearer_token: "${TWITTER_BEARER_TOKEN}"      # Set via environment variable
+    api_key: "${TWITTER_API_KEY}"                # Set via environment variable
+    api_key_secret: "${TWITTER_API_SECRET}"      # Set via environment variable
+    access_token: "${TWITTER_ACCESS_TOKEN}"     # Set via environment variable
+    access_secret: "${TWITTER_ACCESS_SECRET}"   # Set via environment variable
+    base_url: "https://api.twitter.com"
+    stream_url: "https://api.twitter.com"
+    rate_limit: 300                              # Requests per 15 minutes
+
+  # What to monitor
+  monitoring:
+    keywords:
+      # Crypto scams
+      - "crypto deal"
+      - "bitcoin opportunity"
+      - "invest now"
+      - "guaranteed profit"
+      - "crypto giveaway"
+      
+      # Follow schemes
+      - "follow for follow"
+      - "f4f"
+      - "followback"
+      - "follow me and I'll follow back"
+      
+      # Money scams
+      - "make money online"
+      - "work from home"
+      - "earn $1000"
+      - "easy money"
+      - "get rich quick"
+      
+      # Phishing
+      - "verify account"
+      - "account suspension"
+      - "click here to verify"
+      - "urgent action required"
+      - "confirm your identity"
+
+    hashtags:
+      # Crypto related
+      - "crypto"
+      - "bitcoin"
+      - "cryptocurrency"
+      - "btc"
+      - "eth"
+      - "defi"
+      
+      # Social media engagement
+      - "followback"
+      - "f4f"
+      - "follow4follow"
+      - "followtrain"
+      
+      # Money making
+      - "makemoney"
+      - "workfromhome"
+      - "onlinebusiness"
+      - "passiveincome"
+
+    monitored_users:
+      # Add specific accounts to monitor
+      # - "suspicious_account_1"
+      # - "known_spam_source"
+
+    geo_locations:
+      # Monitor specific geographic regions (optional)
+      # - southwest: { lat: 40.0, lng: -74.0 }  # NYC area
+      #   northeast: { lat: 41.0, lng: -73.0 }
+      #   name: "New York"
+
+  # Crawler settings
+  settings:
+    poll_interval: "30s"                        # How often to poll for new tweets
+    enable_streaming: true                      # Enable real-time streaming
+    batch_size: 100                            # Tweets per search request
+    languages: ["en", "fr", "es"]             # Languages to monitor
+    min_retweets: 0                            # Minimum retweets to consider
+    max_age: "24h"                             # Maximum age of tweets to collect
+    max_tweets_per_hour: 10000                 # Rate limit for collected tweets
+
+# Autonomous detection configuration
+auto_detection:
+  enabled: true
+  interval: "5m"                               # Run detection every 5 minutes
+  min_tweets_for_detection: 50                 # Minimum tweets before running detection
+  auto_clear_old_data: true                    # Automatically clean old data
+  retention_hours: 72                          # Keep data for 72 hours
+  batch_processing: true                       # Process tweets in batches
+  batch_size: 100                             # Batch size for processing
+  continuous_mode: false                       # Run detection continuously vs periodic
+
+  # Detection engine parameters
+  engine:
+    minhash_threshold: 0.7                     # MinHash similarity threshold
+    simhash_threshold: 3                       # SimHash Hamming distance threshold
+    minhash_bands: 16                          # LSH bands for MinHash
+    minhash_hashes: 128                        # Hash functions for MinHash
+    simhash_tables: 4                          # Tables for SimHash
+    min_cluster_size: 3                        # Minimum tweets in spam cluster
+    spam_score_threshold: 0.6                  # Confidence threshold for spam
+    bot_score_threshold: 0.5                   # Threshold for bot detection
+    enable_hybrid_mode: true                   # Use both MinHash and SimHash
+
+# Alert system configuration
+alerts:
+  enabled: true
+
+  # Webhook notifications
+  webhooks:
+    enabled: false
+    urls:
+      # - "https://your-webhook-url.com/spam-alert"
+    headers:
+      Authorization: "Bearer ${WEBHOOK_TOKEN}"
+    timeout: "10s"
+    retry_count: 3
+
+  # Email notifications
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    username: "${EMAIL_USERNAME}"
+    password: "${EMAIL_PASSWORD}"
+    from: "spam-detector@yourdomain.com"
+    to:
+      - "admin@yourdomain.com"
+      - "security@yourdomain.com"
+    subject: "[SPAM ALERT] X Spam Detector"
+    use_tls: true
+
+  # Slack notifications
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#spam-alerts"
+    username: "X Spam Detector"
+    icon_emoji: ":warning:"
+
+  # Discord notifications
+  discord:
+    enabled: false
+    webhook_url: "${DISCORD_WEBHOOK_URL}"
+    username: "X Spam Detector"
+    avatar_url: ""
+
+  # Alert thresholds
+  thresholds:
+    min_cluster_size: 3                        # Minimum cluster size to alert
+    min_confidence: 0.6                        # Minimum confidence to alert
+    critical_size: 10                          # Size for critical alerts
+    massive_size: 50                           # Size for massive campaign alerts
+    suspicious_accounts: 5                     # Threshold for suspicious account alerts
+    spam_rate_threshold: 0.3                   # Alert if spam rate exceeds 30%
+
+  # Rate limiting for alerts
+  rate_limiting:
+    max_alerts_per_hour: 100                   # Maximum alerts per hour
+    cooldown_period: "5m"                      # Cooldown between similar alerts
+    duplicate_window: "30m"                    # Window for duplicate detection
+
+# System configuration
+system:
+  max_memory_mb: 2000                          # Maximum memory usage (MB)
+  health_check_interval: "5m"                  # Health check frequency
+  metrics_interval: "30s"                      # Metrics update frequency
+  log_level: "info"                           # Log level (debug, info, warn, error)
+  enable_profiling: false                      # Enable Go profiling
+  profiling_port: 6060                        # Port for profiling endpoint
+
+# API server configuration
+api:
+  enabled: true
+  port: 8080
+  host: "0.0.0.0"                             # Listen on all interfaces
+  enable_cors: true                           # Enable CORS for web dashboard
+  read_timeout: "30s"
+  write_timeout: "30s"
+  enable_auth: false                          # Enable API key authentication
+  api_key: "${API_KEY}"                       # API key for authentication
+
+# GUI configuration (for fallback mode)
+gui:
+  window_width: 1200
+  window_height: 800
+  theme: "auto"
+  refresh_interval: 5
+  max_display_items: 1000
+
+# Logging configuration
+logging:
+  level: "info"
+  output: "both"                              # stdout, file, both
+  filename: "spam-detector.log"
+  max_size: 50                                # MB
+  max_backups: 10
+  max_age: 30                                 # days

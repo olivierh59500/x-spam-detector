@@ -1,0 +1,42 @@
+app:
+  name: "X Spam Detector"
+  version: "1.0.0"
+  environment: "development"
+  data_dir: "./data"
+  temp_dir: "./temp"
+
+detection:
+  # LSH Parameters - optimized for spam detection
+  minhash_threshold: 0.7    # 70% similarity threshold
+  simhash_threshold: 3      # Hamming distance threshold
+  minhash_bands: 16         # Number of LSH bands
+  minhash_hashes: 128       # Number of hash functions
+  simhash_tables: 4         # Number of SimHash tables
+  
+  # Clustering Parameters
+  min_cluster_size: 3       # Minimum tweets in a spam cluster
+  max_cluster_age_hours: 24 # Hours before cluster expires
+  
+  # Detection Thresholds
+  spam_score_threshold: 0.6   # Minimum confidence for spam classification
+  bot_score_threshold: 0.5    # Minimum score to flag as bot account
+  coordination_threshold: 5   # Minimum cluster size to check coordination
+  
+  # Performance Settings
+  batch_size: 1000           # Process tweets in batches
+  enable_hybrid_mode: true   # Use both MinHash and SimHash
+
+gui:
+  window_width: 1200
+  window_height: 800
+  theme: "auto"              # light, dark, auto
+  refresh_interval: 5        # seconds
+  max_display_items: 1000
+
+logging:
+  level: "info"              # debug, info, warn, error
+  output: "both"             # stdout, file, both
+  filename: "spam-detector.log"
+  max_size: 10               # MB
+  max_backups: 5
+  max_age: 30                # days
