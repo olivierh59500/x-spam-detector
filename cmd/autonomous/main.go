@@ -156,7 +156,7 @@ func runAPIOnlyMode(cfg *autonomous.AutonomousConfig, sigChan <-chan os.Signal) 
 	log.Println("🛑 Shutdown signal received")
 }
 
-func runGUIMode(cfg *autonomous.AutonomousConfig) {
+func runGUIMode(_ *autonomous.AutonomousConfig) {
 	log.Println("🖥️  Starting GUI mode...")
 	
 	// Start GUI (this would import the original GUI code)
@@ -257,12 +257,6 @@ func validateConfig(cfg *autonomous.AutonomousConfig) error {
 	return nil
 }
 
-func convertToRegularConfig(cfg *autonomous.AutonomousConfig) *config.Config {
-	// Convert autonomous config back to regular config for GUI mode
-	regularConfig := config.Default()
-	regularConfig.Detection = cfg.Detection.Engine
-	return regularConfig
-}
 
 func printStartupInfo(cfg *autonomous.AutonomousConfig) {
 	log.Println("\n" + strings.Repeat("=", 60))
@@ -412,6 +406,5 @@ GETTING TWITTER API ACCESS:
 MORE INFO:
 
     Documentation: https://github.com/your-org/x-spam-detector
-    Issues: https://github.com/your-org/x-spam-detector/issues
-`)
+    Issues: https://github.com/your-org/x-spam-detector/issues`)
 }

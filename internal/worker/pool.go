@@ -139,7 +139,7 @@ func (wp *WorkerPool) GetStats() WorkerStats {
 }
 
 // worker is the worker goroutine that processes tasks
-func (wp *WorkerPool) worker(id int) {
+func (wp *WorkerPool) worker(_ int) {
 	defer wp.wg.Done()
 	
 	for {

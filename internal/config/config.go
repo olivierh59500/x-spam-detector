@@ -294,3 +294,14 @@ func (c *Config) String() string {
 	return fmt.Sprintf("X Spam Detector Config (Version: %s, Environment: %s, MinHash Threshold: %.2f, Hybrid Mode: %t)",
 		c.App.Version, c.App.Environment, c.Detection.MinHashThreshold, c.Detection.EnableHybridMode)
 }
+
+// ValidateBasic performs basic configuration validation
+func (c *Config) ValidateBasic() error {
+	if c.App.Name == "" {
+		return fmt.Errorf("app.name cannot be empty")
+	}
+	if c.App.Version == "" {
+		return fmt.Errorf("app.version cannot be empty")
+	}
+	return nil
+}

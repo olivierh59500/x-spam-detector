@@ -1,6 +1,7 @@
 package lsh
 
 import (
+	"fmt"
 	"hash/fnv"
 	"math"
 	"regexp"
@@ -20,9 +21,18 @@ type MinHashLSH struct {
 }
 
 // NewMinHashLSH creates a new MinHash LSH instance
-func NewMinHashLSH(numHashes, bands int, threshold float64) *MinHashLSH {
+func NewMinHashLSH(numHashes, bands int, threshold float64) (*MinHashLSH, error) {
+	if numHashes <= 0 {
+		return nil, fmt.Errorf("numHashes must be positive, got %d", numHashes)
+	}
+	if bands <= 0 {
+		return nil, fmt.Errorf("bands must be positive, got %d", bands)
+	}
 	if numHashes%bands != 0 {
-		panic("numHashes must be divisible by bands")
+		return nil, fmt.Errorf("numHashes (%d) must be divisible by bands (%d)", numHashes, bands)
+	}
+	if threshold < 0 || threshold > 1 {
+		return nil, fmt.Errorf("threshold must be between 0 and 1, got %f", threshold)
 	}
 
 	return &MinHashLSH{
@@ -33,7 +43,7 @@ func NewMinHashLSH(numHashes, bands int, threshold float64) *MinHashLSH {
 		docHashes:   make(map[string][]uint64),
 		docTexts:    make(map[string]string),
 		threshold:   threshold,
-	}
+	}, nil
 }
 
 // Add adds a document to the LSH index

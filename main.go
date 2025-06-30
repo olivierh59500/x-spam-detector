@@ -46,7 +46,10 @@ func runGUIMode() {
 	}
 
 	// Initialize the spam detection application
-	spamDetector := app.New(cfg)
+	spamDetector, err := app.New(cfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize application: %v", err)
+	}
 
 	// Start the GUI
 	gui.Run(spamDetector)

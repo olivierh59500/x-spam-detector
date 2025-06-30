@@ -18,9 +18,12 @@ type SpamDetectorApp struct {
 }
 
 // New creates a new SpamDetectorApp instance
-func New(cfg *config.Config) *SpamDetectorApp {
+func New(cfg *config.Config) (*SpamDetectorApp, error) {
 	// Create detection engine with config
-	engine := detector.NewSpamDetectionEngine(cfg.GetDetectionConfig())
+	engine, err := detector.NewSpamDetectionEngine(cfg.GetDetectionConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create detection engine: %w", err)
+	}
 	
 	app := &SpamDetectorApp{
 		config: cfg,
@@ -34,7 +37,7 @@ func New(cfg *config.Config) *SpamDetectorApp {
 	
 	log.Printf("X Spam Detector initialized: %s", cfg.String())
 	
-	return app
+	return app, nil
 }
 
 // GetEngine returns the spam detection engine

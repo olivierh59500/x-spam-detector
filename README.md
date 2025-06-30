@@ -46,7 +46,7 @@ The system implements two LSH algorithms optimized for spam detection:
 ### Build from Source
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/olivierh59500/x-spam-detector
 cd x-spam-detector
 go mod tidy
 go build -o spam-detector

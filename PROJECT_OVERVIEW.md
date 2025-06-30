@@ -505,7 +505,7 @@ type Alert struct {
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/x-spam-detector.git
+git clone https://github.com/olivierh59500/x-spam-detector.git
 cd x-spam-detector
 
 # Install dependencies

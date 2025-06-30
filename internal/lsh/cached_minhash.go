@@ -23,13 +23,18 @@ type CachedMinHashLSH struct {
 }
 
 // NewCachedMinHashLSH creates a new cached MinHash LSH instance
-func NewCachedMinHashLSH(numHashes, bands int, threshold float64, cacheSize int) *CachedMinHashLSH {
+func NewCachedMinHashLSH(numHashes, bands int, threshold float64, cacheSize int) (*CachedMinHashLSH, error) {
+	minHashLSH, err := NewMinHashLSH(numHashes, bands, threshold)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MinHash LSH: %w", err)
+	}
+	
 	return &CachedMinHashLSH{
-		MinHashLSH:      NewMinHashLSH(numHashes, bands, threshold),
+		MinHashLSH:      minHashLSH,
 		signatureCache:  cache.NewLRUCache(cacheSize, 30*time.Minute),
 		similarityCache: cache.NewSimilarityCache(cacheSize*2, 15*time.Minute),
 		bucketCache:     cache.NewLRUCache(cacheSize/2, 1*time.Hour),
-	}
+	}, nil
 }
 
 // Add adds a document with caching

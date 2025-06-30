@@ -555,7 +555,7 @@ func containsIgnoreCase(text, substring string) bool {
 
 // equalIgnoreCase checks if two strings are equal (case insensitive)
 func equalIgnoreCase(a, b string) bool {
-	return strings.ToLower(a) == strings.ToLower(b)
+	return strings.EqualFold(a, b)
 }
 
 // GetDefaultCrawlerConfig returns a default crawler configuration

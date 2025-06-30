@@ -1,35 +1,49 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	"x-spam-detector/internal/autonomous"
+	"x-spam-detector/internal/security"
 )
 
 // Server provides REST API for monitoring and control
 type Server struct {
-	engine *autonomous.AutonomousEngine
-	config ServerConfig
-	router chi.Router
+	engine    *autonomous.AutonomousEngine
+	config    ServerConfig
+	router    chi.Router
+	keyManager *security.APIKeyManager
 }
 
 // ServerConfig holds API server configuration
 type ServerConfig struct {
-	Port         int           `yaml:"port"`
-	Host         string        `yaml:"host"`
-	EnableCORS   bool          `yaml:"enable_cors"`
-	ReadTimeout  time.Duration `yaml:"read_timeout"`
-	WriteTimeout time.Duration `yaml:"write_timeout"`
-	EnableAuth   bool          `yaml:"enable_auth"`
-	APIKey       string        `yaml:"api_key"`
+	Port         int                      `yaml:"port"`
+	Host         string                   `yaml:"host"`
+	EnableCORS   bool                     `yaml:"enable_cors"`
+	ReadTimeout  time.Duration            `yaml:"read_timeout"`
+	WriteTimeout time.Duration            `yaml:"write_timeout"`
+	EnableAuth   bool                     `yaml:"enable_auth"`
+	APIKey       string                   `yaml:"api_key"` // Deprecated: use KeyManager
+	Security     security.APIKeyConfig    `yaml:"security"`
+	RateLimit    RateLimitConfig          `yaml:"rate_limit"`
+}
+
+// RateLimitConfig holds rate limiting configuration
+type RateLimitConfig struct {
+	Enabled        bool          `yaml:"enabled"`
+	RequestsPerMin int           `yaml:"requests_per_minute"`
+	BurstSize      int           `yaml:"burst_size"`
+	CleanupPeriod  time.Duration `yaml:"cleanup_period"`
 }
 
 // APIResponse represents a standard API response
@@ -55,10 +69,26 @@ func NewServer(engine *autonomous.AutonomousEngine, config ServerConfig) *Server
 		config.WriteTimeout = 30 * time.Second
 	}
 
+	// Initialize security manager
+	securityConfig := config.Security
+	if (securityConfig == security.APIKeyConfig{}) {
+		securityConfig = security.DefaultAPIKeyConfig()
+		securityConfig.RequireAuth = config.EnableAuth
+	}
+	
+	keyManager := security.NewAPIKeyManager(securityConfig)
+	
+	// Setup default key if needed and auth is enabled
+	if config.EnableAuth && config.APIKey != "" {
+		// Migrate legacy API key
+		log.Println("Warning: Using legacy API key. Please migrate to secure key management.")
+	}
+	
 	server := &Server{
-		engine: engine,
-		config: config,
-		router: chi.NewRouter(),
+		engine:     engine,
+		config:     config,
+		router:     chi.NewRouter(),
+		keyManager: keyManager,
 	}
 
 	server.setupRoutes()
@@ -317,7 +347,8 @@ func (s *Server) handleTweets(w http.ResponseWriter, r *http.Request) {
 	if spamOnly {
 		filtered := make([]map[string]interface{}, 0)
 		for _, tweet := range tweets {
-			if tweet["is_spam"].(bool) {
+			// Safe type assertion with validation
+			if isSpam, ok := tweet["is_spam"].(bool); ok && isSpam {
 				filtered = append(filtered, tweet)
 			}
 		}
@@ -671,16 +702,39 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get API key from header
 		apiKey := r.Header.Get("X-API-Key")
-		if apiKey != s.config.APIKey {
+		if apiKey == "" {
+			// Try Authorization header as fallback
+			auth := r.Header.Get("Authorization")
+			if strings.HasPrefix(auth, "Bearer ") {
+				apiKey = strings.TrimPrefix(auth, "Bearer ")
+			}
+		}
+		
+		// Validate API key using secure manager
+		validatedKey, err := s.keyManager.ValidateAPIKey(apiKey)
+		if err != nil {
+			// Log the attempt for security monitoring
+			log.Printf("Authentication failed from %s: %v", r.RemoteAddr, err)
+			
 			s.writeJSON(w, http.StatusUnauthorized, APIResponse{
 				Success:   false,
-				Error:     "Invalid API key",
+				Error:     "Authentication required",
 				Timestamp: time.Now(),
 			})
 			return
 		}
-
+		
+		// Add key info to request context for later use
+		ctx := context.WithValue(r.Context(), "api_key", validatedKey)
+		r = r.WithContext(ctx)
+		
+		// Add security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		
 		next.ServeHTTP(w, r)
 	})
 }
@@ -701,7 +755,14 @@ func GetDefaultServerConfig() ServerConfig {
 		EnableCORS:   true,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
-		EnableAuth:   false,
-		APIKey:       "",
+		EnableAuth:   true, // Security: Enable auth by default
+		APIKey:       "",   // Deprecated: use Security config instead
+		Security:     security.DefaultAPIKeyConfig(),
+		RateLimit: RateLimitConfig{
+			Enabled:        true,
+			RequestsPerMin: 60,
+			BurstSize:      10,
+			CleanupPeriod:  5 * time.Minute,
+		},
 	}
 }

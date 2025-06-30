@@ -58,7 +58,7 @@ type AlgorithmStats struct {
 }
 
 // NewHybridLSH creates a new hybrid LSH instance
-func NewHybridLSH(minHashConfig, simHashConfig LSHConfig, strategy HybridStrategy, threshold float64) *HybridLSH {
+func NewHybridLSH(minHashConfig, simHashConfig LSHConfig, strategy HybridStrategy, threshold float64) (*HybridLSH, error) {
 	weights := LSHWeights{
 		MinHash:     0.6,
 		SimHash:     0.4,
@@ -66,15 +66,21 @@ func NewHybridLSH(minHashConfig, simHashConfig LSHConfig, strategy HybridStrateg
 		ContentType: 0.1,
 	}
 	
+	// Create MinHash LSH with error handling
+	minHashLSH, err := NewCachedMinHashLSH(minHashConfig.NumHashes, minHashConfig.Bands, minHashConfig.Threshold, minHashConfig.CacheSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cached MinHash LSH: %w", err)
+	}
+	
 	return &HybridLSH{
-		minHashLSH:     NewCachedMinHashLSH(minHashConfig.NumHashes, minHashConfig.Bands, minHashConfig.Threshold, minHashConfig.CacheSize),
+		minHashLSH:     minHashLSH,
 		simHashLSH:     NewOptimizedSimHashLSH(simHashConfig.HammingThreshold, simHashConfig.NumTables, simHashConfig.CacheSize),
 		weights:        weights,
 		resultCache:    cache.NewLRUCache(1000, 10*time.Minute),
 		strategy:       strategy,
 		threshold:      threshold,
 		algorithmStats: make(map[string]*AlgorithmStats),
-	}
+	}, nil
 }
 
 // LSHConfig represents configuration for LSH algorithms
@@ -94,7 +100,6 @@ func (h *HybridLSH) Add(docID, text string) error {
 	
 	// Add to both algorithms concurrently
 	var wg sync.WaitGroup
-	var minHashErr, simHashErr error
 	
 	wg.Add(2)
 	
@@ -109,13 +114,6 @@ func (h *HybridLSH) Add(docID, text string) error {
 	}()
 	
 	wg.Wait()
-	
-	if minHashErr != nil {
-		return fmt.Errorf("MinHash add failed: %w", minHashErr)
-	}
-	if simHashErr != nil {
-		return fmt.Errorf("SimHash add failed: %w", simHashErr)
-	}
 	
 	return nil
 }
@@ -349,7 +347,7 @@ func (h *HybridLSH) consensusVotingStrategy(minHashResults, simHashResults []Sim
 }
 
 // calculateDynamicWeights calculates weights based on text characteristics
-func (h *HybridLSH) calculateDynamicWeights(docID string) LSHWeights {
+func (h *HybridLSH) calculateDynamicWeights(_ string) LSHWeights {
 	weights := h.weights
 	
 	// Get document text (assuming we can retrieve it)
@@ -393,7 +391,7 @@ func (h *HybridLSH) filterAndSort(resultMap map[string]*SimilarDocument) []Simil
 }
 
 // updateAlgorithmStats updates performance statistics for an algorithm
-func (h *HybridLSH) updateAlgorithmStats(algorithm string, responseTime time.Duration, resultCount int) {
+func (h *HybridLSH) updateAlgorithmStats(algorithm string, responseTime time.Duration, _ int) {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 	

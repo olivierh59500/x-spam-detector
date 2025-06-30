@@ -138,7 +138,11 @@ func NewAutonomousEngine(config AutonomousConfig) (*AutonomousEngine, error) {
 	engine.crawler = crawler.NewAutonomousCrawler(config.CrawlerConfig)
 	
 	// Initialize detector
-	engine.detector = detector.NewSpamDetectionEngine(config.DetectorConfig)
+	detectorEngine, err := detector.NewSpamDetectionEngine(config.DetectorConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create spam detection engine: %w", err)
+	}
+	engine.detector = detectorEngine
 	
 	// Initialize alert system
 	engine.alertSystem = alerts.NewAlertingSystem()
@@ -212,20 +216,47 @@ func (ae *AutonomousEngine) processingLoop() {
 	
 	log.Println("Starting processing loop...")
 	
+	// Get tweet channel from crawler
+	tweetChan := ae.crawler.GetTweetChannel()
+	errorChan := ae.crawler.GetErrorChannel()
+	
+	// Batch processing
+	tweets := make([]*models.Tweet, 0, ae.config.BufferSize)
+	ticker := time.NewTicker(ae.config.ProcessingDelay)
+	defer ticker.Stop()
+	
 	for {
 		select {
 		case <-ae.ctx.Done():
 			log.Println("Processing loop stopping...")
+			// Process any remaining tweets
+			if len(tweets) > 0 {
+				ae.processTweets(tweets)
+			}
 			return
 			
-		default:
-			// Get tweets from crawler (simplified approach)
-			var tweets []*models.Tweet
-			// TODO: Implement proper tweet collection from crawler
-			time.Sleep(ae.config.ProcessingDelay)
-			continue
+		case tweet := <-tweetChan:
+			if tweet != nil {
+				tweets = append(tweets, tweet)
+				// Process batch when full
+				if len(tweets) >= ae.config.BufferSize {
+					ae.processTweets(tweets)
+					tweets = tweets[:0] // Reset slice
+				}
+			}
 			
-			ae.processTweets(tweets)
+		case err := <-errorChan:
+			if err != nil {
+				log.Printf("Crawler error: %v", err)
+				ae.recordError()
+			}
+			
+		case <-ticker.C:
+			// Process accumulated tweets periodically
+			if len(tweets) > 0 {
+				ae.processTweets(tweets)
+				tweets = tweets[:0] // Reset slice
+			}
 		}
 	}
 }
@@ -266,10 +297,8 @@ func (ae *AutonomousEngine) handleDetectionResult(result *models.DetectionResult
 		log.Printf("High spam rate detected: %.2f%%", result.SpamRate*100)
 		
 		alert := &alerts.Alert{
-			ID:       fmt.Sprintf("spam_rate_%d", time.Now().Unix()),
-			Title:    "High Spam Rate Detected",
-			Message:  fmt.Sprintf("Spam rate reached %.2f%% (%d spam tweets out of %d total)", result.SpamRate*100, result.SpamTweets, result.TotalTweets),
-			Severity: alerts.Critical,
+			Title:   "High Spam Rate Detected",
+			Message: fmt.Sprintf("Spam rate reached %.2f%% (%d spam tweets out of %d total)", result.SpamRate*100, result.SpamTweets, result.TotalTweets),
 		}
 		
 		// Just log for now since sendAlert is private
@@ -283,10 +312,8 @@ func (ae *AutonomousEngine) handleDetectionResult(result *models.DetectionResult
 				cluster.Size, cluster.Confidence)
 			
 			alert := &alerts.Alert{
-				ID:       fmt.Sprintf("cluster_%s", cluster.ID),
-				Title:    "Large Spam Cluster Detected",
-				Message:  fmt.Sprintf("Detected spam cluster with %d tweets (confidence: %.2f)", cluster.Size, cluster.Confidence),
-				Severity: alerts.Warning,
+				Title:   "Large Spam Cluster Detected",
+				Message: fmt.Sprintf("Detected spam cluster with %d tweets (confidence: %.2f)", cluster.Size, cluster.Confidence),
 			}
 			
 			// Just log for now since sendAlert is private

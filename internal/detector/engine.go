@@ -65,7 +65,7 @@ type Statistics struct {
 }
 
 // NewSpamDetectionEngine creates a new spam detection engine
-func NewSpamDetectionEngine(config Config) *SpamDetectionEngine {
+func NewSpamDetectionEngine(config Config) (*SpamDetectionEngine, error) {
 	// Calculate optimal LSH parameters if not provided
 	if config.MinHashBands == 0 || config.MinHashHashes == 0 {
 		bands, _ := lsh.CalculateOptimalParameters(config.MinHashThreshold, 128)
@@ -77,14 +77,20 @@ func NewSpamDetectionEngine(config Config) *SpamDetectionEngine {
 		config.SimHashTables = 4
 	}
 	
+	// Create MinHash LSH with error handling
+	minHashLSH, err := lsh.NewMinHashLSH(config.MinHashHashes, config.MinHashBands, config.MinHashThreshold)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MinHash LSH: %w", err)
+	}
+	
 	return &SpamDetectionEngine{
-		minHashLSH: lsh.NewMinHashLSH(config.MinHashHashes, config.MinHashBands, config.MinHashThreshold),
+		minHashLSH: minHashLSH,
 		simHashLSH: lsh.NewSimHashLSH(config.SimHashThreshold, config.SimHashTables),
 		tweets:     make(map[string]*models.Tweet),
 		accounts:   make(map[string]*models.Account),
 		clusters:   make(map[string]*models.SpamCluster),
 		config:     config,
-	}
+	}, nil
 }
 
 // AddTweet adds a new tweet to the detection engine
@@ -481,11 +487,17 @@ func (e *SpamDetectionEngine) GetSuspiciousAccounts() []*models.Account {
 }
 
 // Clear removes all data from the engine
-func (e *SpamDetectionEngine) Clear() {
+func (e *SpamDetectionEngine) Clear() error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	
-	e.minHashLSH = lsh.NewMinHashLSH(e.config.MinHashHashes, e.config.MinHashBands, e.config.MinHashThreshold)
+	// Recreate MinHash LSH with error handling
+	minHashLSH, err := lsh.NewMinHashLSH(e.config.MinHashHashes, e.config.MinHashBands, e.config.MinHashThreshold)
+	if err != nil {
+		return fmt.Errorf("failed to recreate MinHash LSH: %w", err)
+	}
+	
+	e.minHashLSH = minHashLSH
 	e.simHashLSH = lsh.NewSimHashLSH(e.config.SimHashThreshold, e.config.SimHashTables)
 	e.tweets = make(map[string]*models.Tweet)
 	e.accounts = make(map[string]*models.Account)
@@ -496,17 +508,23 @@ func (e *SpamDetectionEngine) Clear() {
 	e.stats.SpamTweets = 0
 	e.stats.ActiveClusters = 0
 	e.stats.SuspiciousAccounts = 0
+	
+	return nil
 }
 
 // UpdateConfig updates the engine configuration
-func (e *SpamDetectionEngine) UpdateConfig(config Config) {
+func (e *SpamDetectionEngine) UpdateConfig(config Config) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	
-	e.config = config
+	// Validate and create new MinHash LSH with new parameters
+	minHashLSH, err := lsh.NewMinHashLSH(config.MinHashHashes, config.MinHashBands, config.MinHashThreshold)
+	if err != nil {
+		return fmt.Errorf("failed to create MinHash LSH with new config: %w", err)
+	}
 	
-	// Recreate LSH instances with new parameters
-	e.minHashLSH = lsh.NewMinHashLSH(config.MinHashHashes, config.MinHashBands, config.MinHashThreshold)
+	e.config = config
+	e.minHashLSH = minHashLSH
 	e.simHashLSH = lsh.NewSimHashLSH(config.SimHashThreshold, config.SimHashTables)
 	
 	// Re-add all tweets to the new LSH instances
@@ -514,4 +532,6 @@ func (e *SpamDetectionEngine) UpdateConfig(config Config) {
 		e.minHashLSH.Add(tweet.ID, tweet.Text)
 		e.simHashLSH.Add(tweet.ID, tweet.Text)
 	}
+	
+	return nil
 }

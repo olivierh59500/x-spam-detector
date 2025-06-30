@@ -102,7 +102,7 @@ A professional, enterprise-grade spam detection system for X (Twitter) that uses
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/olivierh59500/x-spam-detector
 cd x-spam-detector
 
 # Install dependencies
@@ -543,4 +543,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-For questions, issues, or contributions, please visit our [GitHub repository](https://github.com/company/x-spam-detector) or contact the development team.
+For questions, issues, or contributions, please visit our [GitHub repository](https://github.com/olivierh59500/x-spam-detector) or contact the development team.

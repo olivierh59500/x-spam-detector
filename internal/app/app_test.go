@@ -12,8 +12,9 @@ import (
 
 func TestNew(t *testing.T) {
 	cfg := config.Default()
-	app := New(cfg)
+	app, err := New(cfg)
 	
+	assert.NoError(t, err)
 	assert.NotNil(t, app)
 	assert.NotNil(t, app.config)
 	assert.NotNil(t, app.engine)
@@ -386,7 +387,11 @@ func createTestApp() *SpamDetectorApp {
 	cfg.Detection.MinHashHashes = 64
 	cfg.Detection.MinHashBands = 8
 	cfg.Detection.MinClusterSize = 2
-	return New(cfg)
+	app, err := New(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create test app: %v", err))
+	}
+	return app
 }
 
 func containsSpamKeywords(text string) bool {

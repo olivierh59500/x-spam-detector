@@ -13,32 +13,33 @@ func TestNewMinHashLSH(t *testing.T) {
 		numHashes int
 		bands     int
 		threshold float64
-		shouldPanic bool
+		shouldError bool
 	}{
 		{
 			name:      "valid parameters",
 			numHashes: 128,
 			bands:     16,
 			threshold: 0.7,
-			shouldPanic: false,
+			shouldError: false,
 		},
 		{
 			name:      "indivisible hashes and bands",
 			numHashes: 127,
 			bands:     16,
 			threshold: 0.7,
-			shouldPanic: true,
+			shouldError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.shouldPanic {
-				assert.Panics(t, func() {
-					NewMinHashLSH(tt.numHashes, tt.bands, tt.threshold)
-				})
+			lsh, err := NewMinHashLSH(tt.numHashes, tt.bands, tt.threshold)
+			
+			if tt.shouldError {
+				assert.Error(t, err)
+				assert.Nil(t, lsh)
 			} else {
-				lsh := NewMinHashLSH(tt.numHashes, tt.bands, tt.threshold)
+				assert.NoError(t, err)
 				assert.NotNil(t, lsh)
 				assert.Equal(t, tt.numHashes, lsh.numHashes)
 				assert.Equal(t, tt.bands, lsh.bands)
@@ -50,7 +51,8 @@ func TestNewMinHashLSH(t *testing.T) {
 }
 
 func TestMinHashLSH_AddAndFindSimilar(t *testing.T) {
-	lsh := NewMinHashLSH(128, 16, 0.7)
+	lsh, err := NewMinHashLSH(128, 16, 0.7)
+	assert.NoError(t, err)
 	
 	// Add some test documents
 	testDocs := map[string]string{
@@ -95,7 +97,8 @@ func TestMinHashLSH_AddAndFindSimilar(t *testing.T) {
 }
 
 func TestMinHashLSH_GetAllSimilarClusters(t *testing.T) {
-	lsh := NewMinHashLSH(128, 16, 0.8)
+	lsh, err := NewMinHashLSH(128, 16, 0.8)
+	assert.NoError(t, err)
 	
 	// Add documents with known similarity patterns
 	testDocs := map[string]string{
@@ -133,7 +136,8 @@ func TestMinHashLSH_GetAllSimilarClusters(t *testing.T) {
 }
 
 func TestMinHashLSH_Tokenize(t *testing.T) {
-	lsh := NewMinHashLSH(128, 16, 0.7)
+	lsh, err := NewMinHashLSH(128, 16, 0.7)
+	assert.NoError(t, err)
 	
 	tests := []struct {
 		name     string
@@ -234,7 +238,8 @@ func TestCalculateOptimalParameters(t *testing.T) {
 
 func TestMinHashLSH_SpamDetectionScenario(t *testing.T) {
 	// Test with realistic spam detection scenario
-	lsh := NewMinHashLSH(128, 16, 0.7)
+	lsh, err := NewMinHashLSH(128, 16, 0.7)
+	assert.NoError(t, err)
 	
 	// Simulate spam campaign with slight variations
 	spamTweets := []string{
@@ -288,7 +293,10 @@ func TestMinHashLSH_SpamDetectionScenario(t *testing.T) {
 }
 
 func BenchmarkMinHashLSH_Add(b *testing.B) {
-	lsh := NewMinHashLSH(128, 16, 0.7)
+	lsh, err := NewMinHashLSH(128, 16, 0.7)
+	if err != nil {
+		b.Fatal(err)
+	}
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -298,7 +306,10 @@ func BenchmarkMinHashLSH_Add(b *testing.B) {
 }
 
 func BenchmarkMinHashLSH_FindSimilar(b *testing.B) {
-	lsh := NewMinHashLSH(128, 16, 0.7)
+	lsh, err := NewMinHashLSH(128, 16, 0.7)
+	if err != nil {
+		b.Fatal(err)
+	}
 	
 	// Pre-populate with test data
 	for i := 0; i < 1000; i++ {
@@ -313,7 +324,10 @@ func BenchmarkMinHashLSH_FindSimilar(b *testing.B) {
 }
 
 func BenchmarkMinHashLSH_GetAllSimilarClusters(b *testing.B) {
-	lsh := NewMinHashLSH(128, 16, 0.7)
+	lsh, err := NewMinHashLSH(128, 16, 0.7)
+	if err != nil {
+		b.Fatal(err)
+	}
 	
 	// Pre-populate with test data
 	for i := 0; i < 100; i++ {
